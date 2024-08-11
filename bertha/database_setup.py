@@ -19,7 +19,7 @@ def initialize_database(db_name='db_websites.db'):
             dt_discovered TEXT NOT NULL,  -- formatted as YYYYMMDDHHMMSS
             sitemaps TEXT,
             referring_pages TEXT,
-            dt_last_crawl TEXT NOT NULL,  -- formatted as YYYYMMDDHHMMSS
+            dt_last_crawl TEXT,  -- Nullable, because it hasn't been crawled yet
             successful_page_fetch BOOLEAN NOT NULL,
             status_code INTEGER NOT NULL
         )
@@ -34,3 +34,4 @@ def initialize_database(db_name='db_websites.db'):
 
 if __name__ == "__main__":
     initialize_database()
+    
