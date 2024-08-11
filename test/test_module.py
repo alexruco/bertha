@@ -1,90 +1,63 @@
-# my_python_module/module.py
+# test_module.py
+import unittest
+import sqlite3
+import os
 
-"""
-module.py
-=========
+from bertha.database_setup import initialize_database
+from bertha.discover_pages import insert_into_discovery_if_not_exists
 
-This module provides example functions and classes for demonstration purposes.
-"""
+class TestDiscoverPages(unittest.TestCase):
 
-def some_function(x, y):
-    """
-    Adds two numbers together.
+    @classmethod
+    def setUpClass(cls):
+        """Set up a temporary database for testing."""
+        cls.test_db = 'test_db_websites.db'
+        initialize_database(cls.test_db)
 
-    Parameters
-    ----------
-    x : int or float
-        The first number.
-    y : int or float
-        The second number.
+    @classmethod
+    def tearDownClass(cls):
+        """Remove the temporary database after testing."""
+        if os.path.exists(cls.test_db):
+            os.remove(cls.test_db)
 
-    Returns
-    -------
-    int or float
-        The sum of x and y.
-    """
-    return x + y
+    def setUp(self):
+        """Reset the database to a clean state before each test."""
+        conn = sqlite3.connect(self.test_db)
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM tb_discovery')
+        conn.commit()
+        cursor.close()
+        conn.close()
 
-class ExampleClass:
-    """
-    An example class that performs simple arithmetic operations.
+    def test_insert_new_url(self):
+        """Test inserting a new URL into the tb_discovery table."""
+        url = 'https://example.com'
+        insert_into_discovery_if_not_exists(url, self.test_db)
 
-    Attributes
-    ----------
-    value : int or float
-        The initial value for the arithmetic operations.
-    """
+        conn = sqlite3.connect(self.test_db)
+        cursor = conn.cursor()
+        cursor.execute('SELECT url FROM tb_discovery WHERE url = ?', (url,))
+        result = cursor.fetchone()
+        cursor.close()
+        conn.close()
 
-    def __init__(self, value):
-        """
-        Initializes the ExampleClass with a value.
+        self.assertIsNotNone(result)
+        self.assertEqual(result[0], url)
 
-        Parameters
-        ----------
-        value : int or float
-            The initial value for the arithmetic operations.
-        """
-        self.value = value
+    def test_insert_existing_url(self):
+        """Test that inserting an existing URL does not duplicate it."""
+        url = 'https://example.com'
+        insert_into_discovery_if_not_exists(url, self.test_db)
+        insert_into_discovery_if_not_exists(url, self.test_db)
 
-    def add(self, amount):
-        """
-        Adds a given amount to the value.
+        conn = sqlite3.connect(self.test_db)
+        cursor = conn.cursor()
+        cursor.execute('SELECT COUNT(*) FROM tb_discovery WHERE url = ?', (url,))
+        count = cursor.fetchone()[0]
+        cursor.close()
+        conn.close()
 
-        Parameters
-        ----------
-        amount : int or float
-            The amount to add to the value.
+        self.assertEqual(count, 1)
 
-        Returns
-        -------
-        int or float
-            The new value after addition.
-        """
-        self.value += amount
-        return self.value
-
-    def multiply(self, factor):
-        """
-        Multiplies the value by a given factor.
-
-        Parameters
-        ----------
-        factor : int or float
-            The factor to multiply the value by.
-
-        Returns
-        -------
-        int or float
-            The new value after multiplication.
-        """
-        self.value *= factor
-        return self.value
-
-def helper_function():
-    """
-    A helper function that prints a message.
-
-    This function doesn't do much but serves as an example of utility functions
-    you might include in your module.
-    """
-    print("This is a helper function.")
+if __name__ == '__main__':
+    unittest.main()

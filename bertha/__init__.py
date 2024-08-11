@@ -14,7 +14,7 @@ module
 
 __version__ = "0.1.0"
 
-from .module import some_function
+from .main import some_function
 
 def package_function():
     """
