@@ -1,17 +1,34 @@
-from urllib.parse import urlparse
-from hellen import links_on_page
-from virginia import check_page_availability
-from dourado import website_sitemaps
+# bertha/utils.py
 
-def is_internal_url(base_url, url):
+import requests
+from urllib.parse import urlparse
+
+
+def check_http_status(url):
     """
-    Checks if a given URL is internal to the base URL's domain.
+    Returns the HTTP status code of the given URL.
     
-    :param base_url: The base URL of the website.
-    :param url: The URL to check.
-    :return: True if the URL is internal, False otherwise.
+    :param url: The URL to check the HTTP status for.
+    :return: An integer representing the HTTP status code.
     """
-    base_domain = urlparse(base_url).netloc
-    url_domain = urlparse(url).netloc
-    return base_domain == url_domain
-   
+    try:
+        # Send a GET request to the URL
+        response = requests.get(url, timeout=10)
+        
+        # Return the status code
+        return response.status_code
+    
+    except requests.exceptions.RequestException as e:
+        # If there's any exception (e.g., network error, invalid URL), return None or a custom code
+        print(f"Error checking status for {url}: {e}")
+        return None
+
+# Example usage
+if __name__ == "__main__":
+    url = "https://www.example.com"
+    status_code = check_http_status(url)
+    if status_code is not None:
+        print(f"The HTTP status code for {url} is {status_code}.")
+    else:
+        print(f"Failed to retrieve the HTTP status code for {url}.")
+
