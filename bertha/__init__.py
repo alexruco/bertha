@@ -1,33 +1,45 @@
 # bertha/__init__.py
 
 """
-My Python Module
-================
+Bertha Web Crawler Package
+==========================
 
-A brief description of what your module does.
+This package provides tools to crawl websites, manage the crawling process, and interact with a SQLite database to store and retrieve information about crawled pages.
 
-Submodules
-----------
-module
-    Description of what the submodule does.
+Modules
+-------
+crawl_pages
+    Contains the functions to crawl a list of URLs, check their HTTP status, and update the database accordingly.
+
+database_operations
+    Encapsulates all database operations, including inserting new records, updating existing records, and querying data.
+
+database_setup
+    Handles the initialization and setup of the SQLite database.
+
+utils
+    Provides utility functions, including checking the HTTP status of URLs.
 """
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
-import bertha.database_setup
-import bertha.discover_pages
-import bertha.main
-def package_function():
-    """
-    Example function at the package level.
-    """
-    print("This is a package-level function.")
-
-# If you want to expose certain submodules or functions
-# directly at the package level, you can import them here
-# and list them in the __all__ variable.
+# Import key functions at the package level for easier access
+from .database_setup import initialize_database
+from .database_operations import (
+    insert_if_not_exists,
+    update_sitemaps_for_url,
+    update_crawl_info,
+    get_urls_to_crawl
+)
+from .crawl_pages import crawl_pages
+from .utils import check_http_status
 
 __all__ = [
-    "some_function",
-    "package_function"
+    "initialize_database",
+    "insert_if_not_exists",
+    "update_sitemaps_for_url",
+    "update_crawl_info",
+    "get_urls_to_crawl",
+    "crawl_pages",
+    "check_http_status"
 ]

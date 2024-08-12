@@ -1,11 +1,16 @@
 # bertha/crawl_pages.py
 
-from bertha.discover_pages import insert_if_not_exists
-from bertha.utils import check_http_status
-from bertha.database_setup import initialize_database
-from hellen import internal_links_on_page
+
 from datetime import datetime
 import sqlite3
+from hellen import internal_links_on_page
+
+from bertha.utils import check_http_status
+from bertha.database_setup import initialize_database
+from bertha.database_operations import (
+    initialize_database,
+    insert_if_not_exists
+)
 
 def crawl_pages(urls, db_name='db_websites.db'):
     """

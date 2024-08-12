@@ -1,6 +1,5 @@
 # bertha/database_setup.py
 import sqlite3
-import os
 
 def initialize_database(db_name='db_websites.db'):
     """

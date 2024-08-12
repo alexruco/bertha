@@ -1,6 +1,8 @@
 import sys
-from bertha.discover_pages import urls_to_crawl
 from bertha.crawl_pages import crawl_pages
+from bertha.database_operations import (
+    urls_to_crawl
+)
 
 
 def main(base_url, gap):
