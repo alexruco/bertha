@@ -14,7 +14,7 @@ module
 
 __version__ = "0.1.0"
 
-from .test import some_function
+import test.test_main
 
 def package_function():
     """

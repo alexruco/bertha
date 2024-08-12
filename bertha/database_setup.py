@@ -1,4 +1,4 @@
-# database_setup.py
+# bertha/database_setup.py
 import sqlite3
 import os
 
@@ -13,8 +13,8 @@ def initialize_database(db_name='db_websites.db'):
     cursor = conn.cursor()
 
     # Create the tb_discovery table if it doesn't exist
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS tb_discovery (
+    cursor.execute('''            
+        CREATE TABLE IF NOT EXISTS tb_pages (
             url TEXT NOT NULL,
             dt_discovered TEXT NOT NULL,  -- formatted as YYYYMMDDHHMMSS
             sitemaps TEXT,
@@ -25,7 +25,7 @@ def initialize_database(db_name='db_websites.db'):
         )
     ''')
 
-    print("Table 'tb_discovery' is ready.")
+    print("Table 'tb_pages' is ready.")
     
     # Commit the changes and close the connection
     conn.commit()
@@ -34,4 +34,3 @@ def initialize_database(db_name='db_websites.db'):
 
 if __name__ == "__main__":
     initialize_database()
-    

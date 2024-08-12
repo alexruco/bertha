@@ -1,4 +1,4 @@
-# my_python_module/__init__.py
+# bertha/__init__.py
 
 """
 My Python Module
@@ -14,8 +14,9 @@ module
 
 __version__ = "0.1.0"
 
-from .main import some_function
-
+import bertha.database_setup
+import bertha.discover_pages
+import bertha.main
 def package_function():
     """
     Example function at the package level.
