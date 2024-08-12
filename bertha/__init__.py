@@ -33,6 +33,7 @@ from .database_operations import (
 )
 from .crawl_pages import crawl_pages
 from .utils import check_http_status
+from .database_operations import get_urls_to_crawl
 
 __all__ = [
     "initialize_database",

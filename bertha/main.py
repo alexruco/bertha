@@ -1,8 +1,12 @@
 import sys
-from bertha.crawl_pages import crawl_pages
-from bertha.database_operations import (
-    urls_to_crawl
+from crawl_pages import crawl_pages
+from database_operations import (
+    get_urls_to_crawl,
+    insert_if_not_exists
 )
+from database_setup import initialize_database
+from dourado import pages_from_sitemaps
+
 
 
 def main(base_url, gap):
@@ -13,9 +17,22 @@ def main(base_url, gap):
     :param base_url: The base URL of the website to crawl.
     :param gap: The number of days to check if the URL's last crawl is outdated.
     """
+    
+    #initialize the database
+    initialize_database()
+    
+    #store the given url if not existis e.g. the homepage
+    insert_if_not_exists(url=base_url)
+    
+    #retrieve and store urls from sitemaps
+    urls_from_sitemaps = pages_from_sitemaps(website_url=base_url)
+    for sitemap_url in urls_from_sitemaps:
+      insert_if_not_exists(url=sitemap_url)  
+    
+    #recursivally crawl the just inserted pages
     while True:
         # Get the URLs to crawl
-        urls = urls_to_crawl(base_url, gap)
+        urls = get_urls_to_crawl(base_url, gap)
 
         # If no URLs are returned, break the loop
         if not urls:
