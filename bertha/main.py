@@ -8,8 +8,6 @@ from database_operations import (
 from database_setup import initialize_database
 from dourado import pages_from_sitemaps
 
-
-
 def main(base_url, gap):
     """
     Main function that initializes the database, retrieves URLs to crawl, and processes them.
@@ -19,23 +17,23 @@ def main(base_url, gap):
     :param gap: The number of days to check if the URL's last crawl is outdated.
     """
     
-    #initialize the database
+    # Initialize the database
     initialize_database()
     
-    #store the given url if not existis e.g. the homepage
+    # Store the given URL if it doesn't already exist (e.g., the homepage)
     insert_if_not_exists(url=base_url)
     
-    #retrieve and store urls from sitemaps
+    # Retrieve and store URLs from sitemaps
     urls_collected_from_sitemaps = pages_from_sitemaps(website_url=base_url)
     
-    urls_from_sitemap, refering_sitemaps = urls_collected_from_sitemaps
-    
-    for url_from_sitemap in urls_from_sitemap:
+    # Iterate through the collected URLs and update the database
+    for url_from_sitemap, referring_sitemap in urls_collected_from_sitemaps:
+        #Insert the url into the database
         insert_if_not_exists(url=url_from_sitemap)
-        update_sitemaps_for_url(url=url_from_sitemap, sitemap_url=refering_sitemaps)
+        #update the field "sitemaps"
+        update_sitemaps_for_url(url=url_from_sitemap, sitemap_url=referring_sitemap)
 
-    
-    #recursivally crawl the just inserted pages
+    # Recursively crawl the just inserted pages
     while True:
         # Get the URLs to crawl
         urls = get_urls_to_crawl(base_url, gap)
