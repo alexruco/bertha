@@ -11,7 +11,9 @@ from database_operations import (
 from database_setup import initialize_database
 from dourado import pages_from_sitemaps
 
-def main(base_url, gap, retries=5, timeout=30):
+
+
+def main(base_url, gap, retries=5, timeout=1000):
     """
     Main function that initializes the database, retrieves URLs to crawl, and processes them.
     The function will continue to call `urls_to_crawl` and `crawl_pages` until no more URLs are returned.
@@ -104,7 +106,7 @@ def main(base_url, gap, retries=5, timeout=30):
             print("Failed to crawl pages after multiple attempts.")
             sys.exit(1)
 
-def crawl_website(base_url, gap=30):
+def crawl_website(base_url, gap=1000):
     """
     Initiates a crawl of the website starting from the base_url, using the provided gap.
     
@@ -119,7 +121,7 @@ def recrawl_website(base_url):
     
     :param base_url: The base URL of the website to recrawl.
     """
-    main(base_url, gap=0)
+    main(base_url, gap=1000)
 
 def recrawl_url(url, db_name='db_websites.db'):
     """
