@@ -10,9 +10,14 @@ def initialize_database(db_name='db_websites.db'):
     # Connect to the SQLite database (this will create the file if it doesn't exist)
     conn = sqlite3.connect(db_name)
     cursor = conn.cursor()
+    
+        # Create the tb_discovery table if it doesn't exist
+    cursor.execute('''      
+        DROP TABLE tb_pages 
+    ''')
 
     # Create the tb_discovery table if it doesn't exist
-    cursor.execute('''            
+    cursor.execute('''      
         CREATE TABLE IF NOT EXISTS tb_pages (
             url TEXT NOT NULL,
             dt_discovered TEXT NOT NULL,  -- formatted as YYYYMMDDHHMMSS
@@ -20,7 +25,7 @@ def initialize_database(db_name='db_websites.db'):
             referring_pages TEXT,
             dt_last_crawl TEXT,  -- Nullable, because it hasn't been crawled yet
             successful_page_fetch BOOLEAN NOT NULL,
-            status_code INTEGER NOT NULL
+            status_code INTEGER -- Nullable, because it hasn't been crawled yet
         )
     ''')
 

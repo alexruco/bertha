@@ -2,7 +2,8 @@ import sys
 from crawl_pages import crawl_pages
 from database_operations import (
     get_urls_to_crawl,
-    insert_if_not_exists
+    insert_if_not_exists,
+    update_sitemaps_for_url
 )
 from database_setup import initialize_database
 from dourado import pages_from_sitemaps
@@ -25,9 +26,14 @@ def main(base_url, gap):
     insert_if_not_exists(url=base_url)
     
     #retrieve and store urls from sitemaps
-    urls_from_sitemaps = pages_from_sitemaps(website_url=base_url)
-    for sitemap_url in urls_from_sitemaps:
-      insert_if_not_exists(url=sitemap_url)  
+    urls_collected_from_sitemaps = pages_from_sitemaps(website_url=base_url)
+    
+    urls_from_sitemap, refering_sitemaps = urls_collected_from_sitemaps
+    
+    for url_from_sitemap in urls_from_sitemap:
+        insert_if_not_exists(url=url_from_sitemap)
+        update_sitemaps_for_url(url=url_from_sitemap, sitemap_url=refering_sitemaps)
+
     
     #recursivally crawl the just inserted pages
     while True:
