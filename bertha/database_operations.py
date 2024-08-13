@@ -14,17 +14,10 @@ def get_conn():
     """
     return pool.connect()
 
-def insert_if_not_exists(url, referring_page=None, db_name='db_websites.db', retries=5):    
-    """
-    Inserts a URL into the database if it does not already exist.
-
-    :param url: The URL to be inserted.
-    :param db_name: The name of the SQLite database file (default is 'db_websites.db').
-    :param retries: The number of times to retry the operation if the database is locked (default is 5).
-    """
+def insert_if_not_exists(url, referring_page=None, db_name='db_websites.db', retries=5):
     for i in range(retries):
         try:
-            with sqlite3.connect(db_name, timeout=30) as conn:  # Increased timeout to 30 seconds
+            with sqlite3.connect(db_name, timeout=30) as conn:
                 cursor = conn.cursor()
                 cursor.execute('SELECT COUNT(*) FROM tb_pages WHERE url = ?', (url,))
                 count = cursor.fetchone()[0]
@@ -41,11 +34,11 @@ def insert_if_not_exists(url, referring_page=None, db_name='db_websites.db', ret
             break
         except sqlite3.OperationalError as e:
             if 'locked' in str(e):
-                print(f"Database is locked, retrying {i+1}/{retries}...")
+                print(f"Database is locked, retrying {i + 1}/{retries}...")
                 time.sleep(2)  # wait before retrying, increase the sleep time if necessary
             else:
                 raise
-            
+                      
 def update_sitemaps_for_url(url, sitemap_url):
     conn = get_conn()
     cursor = conn.cursor()
@@ -70,20 +63,35 @@ def update_sitemaps_for_url(url, sitemap_url):
     finally:
         conn.close()  # Return the connection to the pool
 
-def update_crawl_info(url, status_code):
-    conn = get_conn()
-    cursor = conn.cursor()
-    try:
-        dt_last_crawl = datetime.now().strftime('%Y%m%d%H%M%S')
-        
-        cursor.execute('''
-            UPDATE tb_pages
-            SET status_code = ?, dt_last_crawl = ?
-            WHERE url = ?
-        ''', (status_code, dt_last_crawl, url))
-        conn.commit()
-    finally:
-        conn.close()  # Return the connection to the pool
+def update_crawl_info(url, status_code, successful, db_name='db_websites.db'):
+    """
+    Updates the crawl information for a given URL in the database.
+
+    :param url: The URL to update.
+    :param status_code: The HTTP status code returned by the URL.
+    :param successful: Boolean indicating whether the page fetch was successful.
+    :param db_name: The name of the SQLite database file (default is 'db_websites.db').
+    """
+    dt_last_crawl = datetime.now().strftime('%Y%m%d%H%M%S')
+    for i in range(5):
+        try:
+            with sqlite3.connect(db_name, timeout=30) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    UPDATE tb_pages
+                    SET status_code = ?, dt_last_crawl = ?, successful_page_fetch = ?
+                    WHERE url = ?
+                ''', (status_code, dt_last_crawl, successful, url))
+                print(f"Updated crawl info for '{url}' with status {status_code}, dt_last_crawl {dt_last_crawl}, and successful_page_fetch {successful}.")
+                conn.commit()
+            break  # Exit the retry loop if successful
+
+        except sqlite3.OperationalError as e:
+            if 'locked' in str(e):
+                print(f"Database is locked, retrying {i + 1}/5...")
+                time.sleep(2)  # Wait before retrying, increase the sleep time if necessary
+            else:
+                raise
 
 def get_urls_to_crawl(base_url, gap=30):
     cutoff_date = (datetime.now() - timedelta(days=gap)).strftime('%Y%m%d%H%M%S')
@@ -102,3 +110,43 @@ def get_urls_to_crawl(base_url, gap=30):
         conn.close()  # Return the connection to the pool
 
     return [url[0] for url in urls]
+
+def update_referring_pages(url, referring_url, db_name='db_websites.db'):
+    """
+    Updates the referring_pages field for a given URL in the database by appending a new referring URL.
+
+    :param url: The URL for which to update the referring pages.
+    :param referring_url: The URL of the page that refers to the target URL.
+    :param db_name: The name of the SQLite database file (default is 'db_websites.db').
+    """
+    for i in range(5):
+        try:
+            with sqlite3.connect(db_name, timeout=30) as conn:
+                cursor = conn.cursor()
+
+                cursor.execute('SELECT referring_pages FROM tb_pages WHERE url = ?', (url,))
+                row = cursor.fetchone()
+
+                if row:
+                    existing_referring_pages = row[0]
+                    if existing_referring_pages:
+                        new_referring_pages = f"{existing_referring_pages},{referring_url}"
+                    else:
+                        new_referring_pages = referring_url
+                    
+                    cursor.execute('''
+                        UPDATE tb_pages
+                        SET referring_pages = ?
+                        WHERE url = ?
+                    ''', (new_referring_pages, url))
+                    print(f"Updated 'referring_pages' for '{url}' with new referrer '{referring_url}'.")
+
+                conn.commit()
+            break  # Exit the retry loop if successful
+
+        except sqlite3.OperationalError as e:
+            if 'locked' in str(e):
+                print(f"Database is locked, retrying {i + 1}/5...")
+                time.sleep(2)  # Wait before retrying, increase the sleep time if necessary
+            else:
+                raise
