@@ -1,13 +1,30 @@
 # bertha/database_operations.py
 
-import sqlite3
+from sqlite3 import dbapi2 as sqlite3
+from sqlalchemy.pool import QueuePool
+from datetime import datetime, timedelta
 import time
-from datetime import datetime, timedelta  # Added timedelta importfrom bertha.database_setup import initialize_database  # Adjusted import
+
+# Create a connection pool
+pool = QueuePool(lambda: sqlite3.connect('db_websites.db'), max_overflow=10, pool_size=5)
+
+def get_conn():
+    """
+    Get a connection from the pool.
+    """
+    return pool.connect()
 
 def insert_if_not_exists(url, db_name='db_websites.db', retries=5):
+    """
+    Inserts a URL into the database if it does not already exist.
+
+    :param url: The URL to be inserted.
+    :param db_name: The name of the SQLite database file (default is 'db_websites.db').
+    :param retries: The number of times to retry the operation if the database is locked (default is 5).
+    """
     for i in range(retries):
         try:
-            with sqlite3.connect(db_name, timeout=10) as conn:
+            with sqlite3.connect(db_name, timeout=30) as conn:  # Increased timeout to 30 seconds
                 cursor = conn.cursor()
                 cursor.execute('SELECT COUNT(*) FROM tb_pages WHERE url = ?', (url,))
                 count = cursor.fetchone()[0]
@@ -25,81 +42,63 @@ def insert_if_not_exists(url, db_name='db_websites.db', retries=5):
         except sqlite3.OperationalError as e:
             if 'locked' in str(e):
                 print(f"Database is locked, retrying {i+1}/{retries}...")
-                time.sleep(1)  # wait before retrying
+                time.sleep(2)  # wait before retrying, increase the sleep time if necessary
             else:
                 raise
-
-def update_sitemaps_for_url(url, sitemap_url, db_name='db_websites.db'):
-    """
-    Updates the sitemaps field for a given URL in the database.
-
-    :param url: The URL for which to update the sitemaps.
-    :param sitemap_url: The sitemap URL to add.
-    :param db_name: The name of the SQLite database file (default is 'db_websites.db').
-    """
-    conn = sqlite3.connect(db_name)
+            
+def update_sitemaps_for_url(url, sitemap_url):
+    conn = get_conn()
     cursor = conn.cursor()
+    try:
+        cursor.execute('SELECT sitemaps FROM tb_pages WHERE url = ?', (url,))
+        row = cursor.fetchone()
 
-    cursor.execute('SELECT sitemaps FROM tb_pages WHERE url = ?', (url,))
-    row = cursor.fetchone()
+        if row:
+            existing_sitemaps = row[0]
+            if existing_sitemaps:
+                new_sitemaps = f"{existing_sitemaps},{sitemap_url}"
+            else:
+                new_sitemaps = sitemap_url
+            
+            cursor.execute('''
+                UPDATE tb_pages
+                SET sitemaps = ?
+                WHERE url = ?
+            ''', (new_sitemaps, url))
+            conn.commit()
+            print(f"Updated 'sitemaps' field for '{url}'.")
+    finally:
+        conn.close()  # Return the connection to the pool
 
-    if row:
-        existing_sitemaps = row[0]
-        if existing_sitemaps:
-            new_sitemaps = f"{existing_sitemaps},{sitemap_url}"
-        else:
-            new_sitemaps = sitemap_url
+def update_crawl_info(url, status_code):
+    conn = get_conn()
+    cursor = conn.cursor()
+    try:
+        dt_last_crawl = datetime.now().strftime('%Y%m%d%H%M%S')
         
         cursor.execute('''
             UPDATE tb_pages
-            SET sitemaps = ?
+            SET status_code = ?, dt_last_crawl = ?
             WHERE url = ?
-        ''', (new_sitemaps, url))
+        ''', (status_code, dt_last_crawl, url))
         conn.commit()
-        print(f"Updated 'sitemaps' field for '{url}'.")
+    finally:
+        conn.close()  # Return the connection to the pool
 
-    cursor.close()
-    conn.close()
-
-def update_crawl_info(url, status_code, db_name='db_websites.db'):
-    conn = sqlite3.connect(db_name)
-    cursor = conn.cursor()
-    dt_last_crawl = datetime.now().strftime('%Y%m%d%H%M%S')
-    
-    cursor.execute('''
-        UPDATE tb_pages
-        SET status_code = ?, dt_last_crawl = ?
-        WHERE url = ?
-    ''', (status_code, dt_last_crawl, url))
-    
-    conn.commit()
-    cursor.close()
-    conn.close()
-
-def get_urls_to_crawl(base_url, gap=30, db_name='db_websites.db'):
-    """
-    Returns a list of URLs that either haven't been crawled yet or whose last crawl
-    was older than the specified gap (in days).
-    
-    :param base_url: The base URL of the website to filter internal URLs.
-    :param gap: The number of days to check if the URL's last crawl is outdated.
-    :param db_name: The name of the SQLite database file (default is 'db_websites.db').
-    :return: A list of URLs that need to be crawled.
-    """
+def get_urls_to_crawl(base_url, gap=30):
     cutoff_date = (datetime.now() - timedelta(days=gap)).strftime('%Y%m%d%H%M%S')
-
-    conn = sqlite3.connect(db_name)
+    conn = get_conn()
     cursor = conn.cursor()
+    try:
+        cursor.execute('''
+            SELECT url 
+            FROM tb_pages 
+            WHERE (dt_last_crawl IS NULL OR dt_last_crawl < ?)
+            AND url LIKE ?
+        ''', (cutoff_date, f'%{base_url}%'))
 
-    cursor.execute('''
-        SELECT url 
-        FROM tb_pages 
-        WHERE (dt_last_crawl IS NULL OR dt_last_crawl < ?)
-        AND url LIKE ?
-    ''', (cutoff_date, f'%{base_url}%'))
-
-    urls = cursor.fetchall()
-    cursor.close()
-    conn.close()
+        urls = cursor.fetchall()
+    finally:
+        conn.close()  # Return the connection to the pool
 
     return [url[0] for url in urls]

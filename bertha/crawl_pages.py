@@ -9,7 +9,7 @@ from database_setup import initialize_database
 from database_operations import insert_if_not_exists,update_crawl_info
 
 
-def crawl_pages(urls, db_name='db_websites.db'):
+def crawl_pages(urls, db_name='db_websites.db', retries=5):
     """
     Crawls the provided collection of URLs, checking the status of pages and updating the database.
     

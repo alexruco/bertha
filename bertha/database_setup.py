@@ -1,37 +1,42 @@
 # bertha/database_setup.py
 import sqlite3
 
+# bertha/database_setup.py
+
+import sqlite3
+import os
+
+import sqlite3
+
+import sqlite3
+
 def initialize_database(db_name='db_websites.db'):
     """
-    Initializes the SQLite database and ensures that the required tables exist.
+    Initializes the SQLite database by setting up the tables and applying necessary configurations.
     
-    :param db_name: Name of the SQLite database file (default is 'db_websites.db').
+    :param db_name: The name of the SQLite database file (default is 'db_websites.db').
     """
-    # Connect to the SQLite database (this will create the file if it doesn't exist)
     conn = sqlite3.connect(db_name)
+    
+    # Set the database to use WAL mode for better concurrency.
+    conn.execute('PRAGMA journal_mode=WAL;')
+    
     cursor = conn.cursor()
     
-        # Create the tb_discovery table if it doesn't exist
-    cursor.execute('''      
-        DROP TABLE tb_pages 
+    # Example of creating a table
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS tb_pages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        url TEXT NOT NULL,
+        dt_discovered TEXT,
+        sitemaps TEXT,
+        referring_pages TEXT,
+        successful_page_fetch BOOLEAN,
+        status_code INTEGER,
+        dt_last_crawl TEXT
+    )
     ''')
-
-    # Create the tb_discovery table if it doesn't exist
-    cursor.execute('''      
-        CREATE TABLE IF NOT EXISTS tb_pages (
-            url TEXT NOT NULL,
-            dt_discovered TEXT NOT NULL,  -- formatted as YYYYMMDDHHMMSS
-            sitemaps TEXT,
-            referring_pages TEXT,
-            dt_last_crawl TEXT,  -- Nullable, because it hasn't been crawled yet
-            successful_page_fetch BOOLEAN NOT NULL,
-            status_code INTEGER -- Nullable, because it hasn't been crawled yet
-        )
-    ''')
-
-    print("Table 'tb_pages' is ready.")
     
-    # Commit the changes and close the connection
     conn.commit()
     cursor.close()
     conn.close()
