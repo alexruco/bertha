@@ -3,7 +3,9 @@
 from sqlite3 import dbapi2 as sqlite3
 from sqlalchemy.pool import QueuePool
 from datetime import datetime, timedelta
+from database_setup import initialize_database
 import time
+import sys
 
 # Create a connection pool
 pool = QueuePool(lambda: sqlite3.connect('db_websites.db'), max_overflow=10, pool_size=5)
@@ -150,3 +152,29 @@ def update_referring_pages(url, referring_url, db_name='db_websites.db'):
                 time.sleep(2)  # Wait before retrying, increase the sleep time if necessary
             else:
                 raise
+
+def initialize_database_with_retries(retries, timeout):
+    for attempt in range(retries):
+        try:
+            initialize_database()
+            print("Database initialized successfully.")
+            break
+        except Exception as e:
+            print(f"Database initialization failed, retrying {attempt + 1}/{retries}...")
+            time.sleep(timeout)
+    else:
+        print("Failed to initialize the database after multiple attempts.")
+        sys.exit(1)
+
+def insert_main_url(base_url, retries, timeout):
+    for attempt in range(retries):
+        try:
+            insert_if_not_exists(url=base_url)
+            print(f"Inserted main URL: {base_url}")
+            break
+        except Exception as e:
+            print(f"Inserting main URL failed, retrying {attempt + 1}/{retries}...")
+            time.sleep(timeout)
+    else:
+        print("Failed to insert main URL after multiple attempts.")
+        sys.exit(1)

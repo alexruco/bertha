@@ -1,16 +1,22 @@
 # bertha/crawl_pages.py
 
 import time
+import sys
 import sqlite3
 from datetime import datetime
 from hellen import internal_links_on_page
 from utils import check_http_status
 from database_setup import initialize_database
+from dourado import pages_from_sitemaps
+from hellen import internal_links_on_page
+
 
 from database_operations import (
     insert_if_not_exists,
     update_referring_pages,
-    update_crawl_info
+    update_crawl_info,
+    update_sitemaps_for_url,
+    get_urls_to_crawl
 )
 
 def crawl_pages(urls, db_name='db_websites.db', retries=5):
@@ -59,3 +65,58 @@ def crawl_pages(urls, db_name='db_websites.db', retries=5):
                     time.sleep(2)  # Wait before retrying, increase the sleep time if necessary
                 else:
                     raise
+
+def process_sitemaps(base_url, retries, timeout):
+    for attempt in range(retries):
+        try:
+            urls_collected_from_sitemaps = pages_from_sitemaps(website_url=base_url)
+            print(f"Retrieved URLs from sitemaps for {base_url}")
+            break
+        except Exception as e:
+            print(f"Retrieving URLs from sitemaps failed, retrying {attempt + 1}/{retries}...")
+            time.sleep(timeout)
+    else:
+        print("Failed to retrieve URLs from sitemaps after multiple attempts.")
+        sys.exit(1)
+    
+    for url_from_sitemap, referring_sitemap in urls_collected_from_sitemaps:
+        for attempt in range(retries):
+            try:
+                insert_if_not_exists(url=url_from_sitemap)
+                update_sitemaps_for_url(url=url_from_sitemap, sitemap_url=referring_sitemap)
+                print(f"Processed sitemap URL: {url_from_sitemap}")
+                break
+            except Exception as e:
+                print(f"Processing {url_from_sitemap} failed, retrying {attempt + 1}/{retries}...")
+                time.sleep(timeout)
+        else:
+            print(f"Failed to process {url_from_sitemap} after multiple attempts.")
+
+def crawl_all_pages(base_url, gap, retries, timeout):
+    while True:
+        for attempt in range(retries):
+            try:
+                urls = get_urls_to_crawl(base_url, gap)
+                break
+            except Exception as e:
+                print(f"Retrieving URLs to crawl failed, retrying {attempt + 1}/{retries}...")
+                time.sleep(timeout)
+        else:
+            print("Failed to retrieve URLs to crawl after multiple attempts.")
+            sys.exit(1)
+
+        if not urls:
+            print("No more URLs to crawl.")
+            break
+
+        for url in urls:
+            for attempt in range(retries):
+                try:
+                    crawl_pages([url])
+                    print(f"Crawled page: {url}")
+                    break
+                except Exception as e:
+                    print(f"Crawling {url} failed, retrying {attempt + 1}/{retries}...")
+                    time.sleep(timeout)
+            else:
+                print(f"Failed to crawl {url} after multiple attempts.")
