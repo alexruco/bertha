@@ -1,7 +1,40 @@
 # bertha/utils.py
 
 import requests
-from urllib.parse import urlparse
+from urllib.parse import urljoin
+
+def get_robots(website):
+    """
+    Fetches and parses the robots.txt file for the given website.
+    
+    :param website: The base URL of the website (e.g., "https://example.com")
+    :return: A dictionary of rules, where keys are paths and values are dictionaries with "index" and "follow" flags.
+    """
+    robots_url = urljoin(website, "/robots.txt")
+    try:
+        response = requests.get(robots_url, timeout=10)
+        response.raise_for_status()
+
+        robots_rules = {}
+        for line in response.text.splitlines():
+            line = line.strip()
+            if line.lower().startswith("user-agent:"):
+                # We only care about the global rules for all user agents
+                user_agent = line.split(":")[1].strip().lower()
+                if user_agent != "*":
+                    continue
+            elif line.lower().startswith("disallow:"):
+                path = line.split(":")[1].strip()
+                robots_rules[path] = {"index": False, "follow": False}
+            elif line.lower().startswith("allow:"):
+                path = line.split(":")[1].strip()
+                robots_rules[path] = {"index": True, "follow": True}
+
+        return robots_rules
+
+    except requests.RequestException as e:
+        print(f"Failed to fetch robots.txt for {website}: {e}")
+        return None
 
 
 def check_http_status(url):

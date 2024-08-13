@@ -1,9 +1,11 @@
 # bertha/database_operations.py
 
 from sqlite3 import dbapi2 as sqlite3
+from urllib.parse import urlparse
 from sqlalchemy.pool import QueuePool
 from datetime import datetime, timedelta
 from database_setup import initialize_database
+from utils import get_robots
 import time
 import sys
 
@@ -15,6 +17,83 @@ def get_conn():
     Get a connection from the pool.
     """
     return pool.connect()
+# bertha/database_operations.py
+
+def update_all_urls_indexibility(base_url, retries=5, timeout=2):
+    """
+    Updates the indexibility of all URLs in the database for the given base URL.
+    
+    :param base_url: The base URL of the website to check.
+    :param retries: The number of retries for each operation if a timeout occurs.
+    :param timeout: Time in seconds to wait between retries.
+    """
+    robots_rules = get_robots(base_url)
+    if robots_rules is None:
+        print(f"Could not retrieve robots.txt for {base_url}. Proceeding without robots.txt rules.")
+        return
+
+    conn = get_conn()
+    cursor = conn.cursor()
+    try:
+        cursor.execute('SELECT url FROM tb_pages WHERE url LIKE ?', (f'%{base_url}%',))
+        urls = cursor.fetchall()
+    finally:
+        conn.close()
+
+    for url_tuple in urls:
+        url = url_tuple[0]
+        for attempt in range(retries):
+            try:
+                update_indexibility(url, robots_rules)
+                break
+            except Exception as e:
+                print(f"Updating indexibility for {url} failed, retrying {attempt + 1}/{retries}...")
+                time.sleep(timeout)
+        else:
+            print(f"Failed to update indexibility for {url} after multiple attempts.")
+
+def update_indexibility(url, robots_rules, db_name='db_websites.db'):
+    """
+    Updates the robots_index and robots_follow fields for a given URL in the database
+    based on the robots.txt rules.
+
+    :param url: The URL to update.
+    :param robots_rules: A dictionary of robots.txt rules.
+    :param db_name: The name of the SQLite database file (default is 'db_websites.db').
+    """
+    parsed_url = urlparse(url)
+    path = parsed_url.path
+
+    # Default to index and follow if no rules match
+    index = True
+    follow = True
+
+    # Check against each rule in robots.txt
+    for rule_path, rule_flags in robots_rules.items():
+        if path.startswith(rule_path):
+            index = rule_flags["index"]
+            follow = rule_flags["follow"]
+            break
+
+    for i in range(5):
+        try:
+            with sqlite3.connect(db_name, timeout=30) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    UPDATE tb_pages
+                    SET robots_index = ?, robots_follow = ?
+                    WHERE url = ?
+                ''', (index, follow, url))
+                print(f"Updated robots info for '{url}' with index: {index}, follow: {follow}.")
+                conn.commit()
+            break
+
+        except sqlite3.OperationalError as e:
+            if 'locked' in str(e):
+                print(f"Database is locked, retrying {i + 1}/5...")
+                time.sleep(2)
+            else:
+                raise
 
 def insert_if_not_exists(url, referring_page=None, db_name='db_websites.db', retries=5):
     for i in range(retries):
