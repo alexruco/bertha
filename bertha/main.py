@@ -1,4 +1,7 @@
+# main.py
+
 import sys
+import time
 from crawl_pages import crawl_pages
 from database_operations import (
     get_urls_to_crawl,
@@ -8,43 +11,98 @@ from database_operations import (
 from database_setup import initialize_database
 from dourado import pages_from_sitemaps
 
-def main(base_url, gap):
+def main(base_url, gap, retries=5, timeout=30):
     """
     Main function that initializes the database, retrieves URLs to crawl, and processes them.
     The function will continue to call `urls_to_crawl` and `crawl_pages` until no more URLs are returned.
     
     :param base_url: The base URL of the website to crawl.
     :param gap: The number of days to check if the URL's last crawl is outdated.
+    :param retries: Number of retries for operations if a timeout occurs.
+    :param timeout: Time in seconds to wait between retries.
     """
     
     # Initialize the database
-    initialize_database()
+    for attempt in range(retries):
+        try:
+            initialize_database()
+            break
+        except Exception as e:
+            print(f"Database initialization failed, retrying {attempt + 1}/{retries}...")
+            time.sleep(timeout)
+    else:
+        print("Failed to initialize the database after multiple attempts.")
+        sys.exit(1)
     
     # Store the given URL if it doesn't already exist (e.g., the homepage)
-    insert_if_not_exists(url=base_url)
+    for attempt in range(retries):
+        try:
+            insert_if_not_exists(url=base_url)
+            break
+        except Exception as e:
+            print(f"Inserting base URL failed, retrying {attempt + 1}/{retries}...")
+            time.sleep(timeout)
+    else:
+        print("Failed to insert base URL after multiple attempts.")
+        sys.exit(1)
     
     # Retrieve and store URLs from sitemaps
-    urls_collected_from_sitemaps = pages_from_sitemaps(website_url=base_url)
+    for attempt in range(retries):
+        try:
+            urls_collected_from_sitemaps = pages_from_sitemaps(website_url=base_url)
+            break
+        except Exception as e:
+            print(f"Retrieving URLs from sitemaps failed, retrying {attempt + 1}/{retries}...")
+            time.sleep(timeout)
+    else:
+        print("Failed to retrieve URLs from sitemaps after multiple attempts.")
+        sys.exit(1)
     
     # Iterate through the collected URLs and update the database
     for url_from_sitemap, referring_sitemap in urls_collected_from_sitemaps:
-        #Insert the url into the database
-        insert_if_not_exists(url=url_from_sitemap)
-        #update the field "sitemaps"
-        update_sitemaps_for_url(url=url_from_sitemap, sitemap_url=referring_sitemap)
-
+        for attempt in range(retries):
+            try:
+                # Insert the URL into the database
+                insert_if_not_exists(url=url_from_sitemap)
+                # Update the field "sitemaps"
+                update_sitemaps_for_url(url=url_from_sitemap, sitemap_url=referring_sitemap)
+                break
+            except Exception as e:
+                print(f"Updating database for {url_from_sitemap} failed, retrying {attempt + 1}/{retries}...")
+                time.sleep(timeout)
+        else:
+            print(f"Failed to update database for {url_from_sitemap} after multiple attempts.")
+    
     # Recursively crawl the just inserted pages
     while True:
-        # Get the URLs to crawl
-        urls = get_urls_to_crawl(base_url, gap)
+        for attempt in range(retries):
+            try:
+                # Get the URLs to crawl
+                urls = get_urls_to_crawl(base_url, gap)
+                break
+            except Exception as e:
+                print(f"Retrieving URLs to crawl failed, retrying {attempt + 1}/{retries}...")
+                time.sleep(timeout)
+        else:
+            print("Failed to retrieve URLs to crawl after multiple attempts.")
+            sys.exit(1)
 
         # If no URLs are returned, break the loop
         if not urls:
             print("No more URLs to crawl.")
             break
 
-        # Crawl the pages
-        crawl_pages(urls)
+        for attempt in range(retries):
+            try:
+                # Crawl the pages
+                crawl_pages(urls)
+                break
+            except Exception as e:
+                print(f"Crawling pages failed, retrying {attempt + 1}/{retries}...")
+                time.sleep(timeout)
+        else:
+            print("Failed to crawl pages after multiple attempts.")
+            sys.exit(1)
 
 def crawl_website(base_url, gap=30):
     """
