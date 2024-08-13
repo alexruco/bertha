@@ -14,7 +14,7 @@ def get_conn():
     """
     return pool.connect()
 
-def insert_if_not_exists(url, db_name='db_websites.db', retries=5):
+def insert_if_not_exists(url, referring_page=None, db_name='db_websites.db', retries=5):    
     """
     Inserts a URL into the database if it does not already exist.
 
@@ -34,7 +34,7 @@ def insert_if_not_exists(url, db_name='db_websites.db', retries=5):
                     cursor.execute('''
                         INSERT INTO tb_pages (url, dt_discovered, sitemaps, referring_pages, successful_page_fetch, status_code)
                         VALUES (?, ?, ?, ?, ?, ?)
-                    ''', (url, dt_discovered, None, None, False, 0))
+                    ''', (url, dt_discovered, None, referring_page, False, 0))
                     print(f"Inserted '{url}' into 'tb_pages' with discovery timestamp '{dt_discovered}'.")
                 else:
                     print(f"'{url}' already exists in 'tb_pages'.")
