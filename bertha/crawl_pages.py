@@ -10,7 +10,6 @@ from database_setup import initialize_database
 from database_operations import (
     insert_if_not_exists,
     update_referring_pages,
-    initialize_database,
     update_crawl_info
 )
 
