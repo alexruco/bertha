@@ -1,40 +1,44 @@
-import unittest
-from unittest.mock import patch, MagicMock
+import pytest
+import sqlite3
 from bertha.database_setup import initialize_database
 
-class TestDatabaseSetup(unittest.TestCase):
+@pytest.fixture(scope="module")
+def db_name():
+    return "test_db_websites.db"
 
-    @patch('bertha.database_setup.sqlite3.connect')
-    def test_initialize_database_creates_table(self, mock_connect):
-        # Mock the database connection and cursor
-        mock_conn = MagicMock()
-        mock_cursor = MagicMock()
-        mock_connect.return_value = mock_conn
-        mock_conn.cursor.return_value = mock_cursor
-        
-        # Call the initialize_database function
-        initialize_database('test_db.db')
-        
-        # Verify that the database connection was established
-        mock_connect.assert_called_once_with('test_db.db')
-        
-        # Verify that the cursor's execute method was called to create the table
-        mock_cursor.execute.assert_called_once_with('''            
-            CREATE TABLE IF NOT EXISTS tb_pages (
-                url TEXT NOT NULL,
-                dt_discovered TEXT NOT NULL,  -- formatted as YYYYMMDDHHMMSS
-                sitemaps TEXT,
-                referring_pages TEXT,
-                dt_last_crawl TEXT,  -- Nullable, because it hasn't been crawled yet
-                successful_page_fetch BOOLEAN NOT NULL,
-                status_code INTEGER NOT NULL
-            )
-        ''')
-        
-        # Verify that changes were committed and the connection was closed
-        mock_conn.commit.assert_called_once()
-        mock_cursor.close.assert_called_once()
-        mock_conn.close.assert_called_once()
+def test_initialize_database(db_name):
+    # Initialize the database
+    initialize_database(db_name)
 
-if __name__ == '__main__':
-    unittest.main()
+    # Connect to the database and verify the table exists
+    conn = sqlite3.connect(db_name)
+    cursor = conn.cursor()
+
+    # Verify the table creation
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='tb_pages';")
+    table_exists = cursor.fetchone()
+
+    assert table_exists is not None, "Table 'tb_pages' should exist."
+
+    # Verify the columns in the table
+    cursor.execute("PRAGMA table_info(tb_pages);")
+    columns = cursor.fetchall()
+
+    expected_columns = {
+        "id", "url", "dt_discovered", "sitemaps", "referring_pages",
+        "successful_page_fetch", "status_code", "dt_last_crawl",
+        "robots_index", "robots_follow"
+    }
+
+    column_names = {column[1] for column in columns}
+    assert expected_columns.issubset(column_names), f"Expected columns {expected_columns} not found in table."
+
+    cursor.close()
+    conn.close()
+
+def test_cleanup(db_name):
+    """Clean up the test database file after tests."""
+    import os
+    if os.path.exists(db_name):
+        os.remove(db_name)
+

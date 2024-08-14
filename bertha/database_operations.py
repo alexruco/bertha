@@ -1,22 +1,27 @@
+import time
+import sys
 from sqlite3 import dbapi2 as sqlite3
 from urllib.parse import urlparse
 from sqlalchemy.pool import QueuePool
 from datetime import datetime, timedelta
-from database_setup import initialize_database
-from utils import get_robots
-import time
-import sys
+from bertha.database_setup import initialize_database
+from bertha.utils import get_robots
+
 
 # Create a connection pool
 pool = QueuePool(lambda: sqlite3.connect('db_websites.db'), max_overflow=10, pool_size=5)
 
-def get_conn():
+def get_conn(db_name='db_websites.db'):
     """
-    Get a connection from the pool.
+    Get a connection from the pool, using the specified database name.
+    
+    :param db_name: The name of the SQLite database file.
+    :return: A connection object.
     """
-    return pool.connect()
+    return sqlite3.connect(db_name)
 
-def update_all_urls_indexibility(base_url, retries=5, timeout=2):
+
+def update_all_urls_indexibility(base_url, retries=5, timeout=2,db_name='db_websites.db'):
     """
     Updates the indexibility of all URLs in the database for the given base URL.
     
@@ -29,7 +34,7 @@ def update_all_urls_indexibility(base_url, retries=5, timeout=2):
         print(f"Could not retrieve robots.txt for {base_url}. Proceeding without robots.txt rules.")
         return
 
-    conn = get_conn()
+    conn = get_conn(db_name=db_name)
     cursor = conn.cursor()
     try:
         cursor.execute('SELECT url FROM tb_pages WHERE url LIKE ?', (f'%{base_url}%',))
@@ -95,7 +100,7 @@ def update_indexibility(url, robots_rules, db_name='db_websites.db'):
 def insert_if_not_exists(url, referring_page=None, db_name='db_websites.db', retries=5):
     for i in range(retries):
         try:
-            with sqlite3.connect(db_name, timeout=30) as conn:
+            with get_conn(db_name) as conn:
                 cursor = conn.cursor()
                 cursor.execute('SELECT COUNT(*) FROM tb_pages WHERE url = ?', (url,))
                 count = cursor.fetchone()[0]
@@ -116,9 +121,9 @@ def insert_if_not_exists(url, referring_page=None, db_name='db_websites.db', ret
                 time.sleep(2)  # wait before retrying, increase the sleep time if necessary
             else:
                 raise
-                      
-def update_sitemaps_for_url(url, sitemap_url):
-    conn = get_conn()
+                   
+def update_sitemaps_for_url(url, sitemap_url,  db_name='db_websites.db'):
+    conn = get_conn(db_name=db_name)
     cursor = conn.cursor()
     try:
         cursor.execute('SELECT sitemaps FROM tb_pages WHERE url = ?', (url,))
@@ -151,29 +156,19 @@ def update_crawl_info(url, status_code, successful, db_name='db_websites.db'):
     :param db_name: The name of the SQLite database file (default is 'db_websites.db').
     """
     dt_last_crawl = datetime.now().strftime('%Y%m%d%H%M%S')
-    for i in range(5):
-        try:
-            with sqlite3.connect(db_name, timeout=30) as conn:
-                cursor = conn.cursor()
-                cursor.execute('''
-                    UPDATE tb_pages
-                    SET status_code = ?, dt_last_crawl = ?, successful_page_fetch = ?
-                    WHERE url = ?
-                ''', (status_code, dt_last_crawl, successful, url))
-                print(f"Updated crawl info for '{url}' with status {status_code}, dt_last_crawl {dt_last_crawl}, and successful_page_fetch {successful}.")
-                conn.commit()
-            break  # Exit the retry loop if successful
+    with sqlite3.connect(db_name, timeout=30) as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            UPDATE tb_pages
+            SET status_code = ?, dt_last_crawl = ?, successful_page_fetch = ?
+            WHERE url = ?
+        ''', (status_code, dt_last_crawl, successful, url))
+        conn.commit()
+        print(f"Updated crawl info for '{url}' with status {status_code}, dt_last_crawl {dt_last_crawl}, and successful_page_fetch {successful}.")
 
-        except sqlite3.OperationalError as e:
-            if 'locked' in str(e):
-                print(f"Database is locked, retrying {i + 1}/5...")
-                time.sleep(2)  # Wait before retrying, increase the sleep time if necessary
-            else:
-                raise
-
-def get_urls_to_crawl(base_url, gap=30):
+def get_urls_to_crawl(base_url, gap=30, db_name='db_websites.db'):
     cutoff_date = (datetime.now() - timedelta(days=gap)).strftime('%Y%m%d%H%M%S')
-    conn = get_conn()
+    conn = sqlite3.connect(db_name)
     cursor = conn.cursor()
     try:
         cursor.execute('''
@@ -188,6 +183,7 @@ def get_urls_to_crawl(base_url, gap=30):
         conn.close()  # Return the connection to the pool
 
     return [url[0] for url in urls]
+
 
 def update_referring_pages(url, referring_url, db_name='db_websites.db'):
     """
@@ -263,7 +259,7 @@ def fetch_all_website_data(base_url, db_name='db_websites.db'):
     :param db_name: The name of the SQLite database file (default is 'db_websites.db').
     :return: A list of dictionaries containing all data for each URL.
     """
-    conn = get_conn()
+    conn = get_conn(db_name=db_name)
     cursor = conn.cursor()
     try:
         cursor.execute('''
@@ -291,16 +287,15 @@ def fetch_all_website_data(base_url, db_name='db_websites.db'):
         conn.close()
 
     return data
-
 def fetch_url_data(url, db_name='db_websites.db'):
     """
     Fetches all data for a specific URL from the database.
 
     :param url: The specific URL.
-    :param db_name: The name of the SQLite database file (default is 'db_websites.db').
+    :param db_name: The name of the SQLite database file.
     :return: A dictionary containing all data for the URL.
     """
-    conn = get_conn()
+    conn = get_conn(db_name)  # Pass the db_name to get_conn
     cursor = conn.cursor()
     try:
         cursor.execute('''

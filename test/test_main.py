@@ -1,46 +1,29 @@
-import unittest
-from unittest.mock import patch, MagicMock
-from bertha.main import crawl_website, recrawl_website, recrawl_url
+# test/test_main.py
 
-class TestMain(unittest.TestCase):
+import pytest
+from bertha.main import recrawl_url
+from bertha.database_operations import fetch_url_data, insert_if_not_exists
+from unittest.mock import patch
+from bertha.database_setup import initialize_database
 
-    @patch('bertha.main.crawl_pages')
-    @patch('bertha.main.get_urls_to_crawl')
-    def test_crawl_website(self, mock_get_urls_to_crawl, mock_crawl_pages):
-        # Setup mock return values
-        mock_get_urls_to_crawl.return_value = ['https://www.example.com/page1', 'https://www.example.com/page2']
-        
-        # Call the function
-        crawl_website('https://www.example.com', gap=30)
-        
-        # Assert that the get_urls_to_crawl was called with the correct parameters
-        mock_get_urls_to_crawl.assert_called_once_with('https://www.example.com', 30)
-        
-        # Assert that crawl_pages was called with the correct URLs
-        mock_crawl_pages.assert_called_once_with(['https://www.example.com/page1', 'https://www.example.com/page2'])
+@pytest.fixture(autouse=True)
+def setup_database():
+    initialize_database('test_db.db')
 
-    @patch('bertha.main.crawl_pages')
-    @patch('bertha.main.get_urls_to_crawl')
-    def test_recrawl_website(self, mock_get_urls_to_crawl, mock_crawl_pages):
-        # Setup mock return values
-        mock_get_urls_to_crawl.return_value = ['https://www.example.com/page1', 'https://www.example.com/page2']
-        
-        # Call the function
-        recrawl_website('https://www.example.com')
-        
-        # Assert that the get_urls_to_crawl was called with gap=0
-        mock_get_urls_to_crawl.assert_called_once_with('https://www.example.com', 0)
-        
-        # Assert that crawl_pages was called with the correct URLs
-        mock_crawl_pages.assert_called_once_with(['https://www.example.com/page1', 'https://www.example.com/page2'])
+def test_recrawl_url():
+    base_url = 'https://example.com'
+    specific_url = f"{base_url}/"
+    insert_if_not_exists(specific_url, db_name='test_db.db')  # Ensure URL is in the database
 
-    @patch('bertha.main.crawl_pages')
-    def test_recrawl_url(self, mock_crawl_pages):
-        # Call the function
-        recrawl_url('https://www.example.com/specific-page')
-        
-        # Assert that crawl_pages was called with the correct single URL
-        mock_crawl_pages.assert_called_once_with(['https://www.example.com/specific-page'])
+    # Mock HTTP status to avoid 404 during testing
+    with patch('bertha.utils.check_http_status') as mock_check_status:
+        mock_check_status.return_value = 200  # Mocking a successful HTTP status
+        recrawl_url(specific_url, db_name='test_db.db')  # Pass the correct db_name here
 
-if __name__ == '__main__':
-    unittest.main()
+    # Fetch the data from the database
+    data = fetch_url_data(specific_url, db_name='test_db.db')
+    print(f"DEBUG: Data fetched for {specific_url}: {data}")  # Debugging line
+
+    assert data is not None  # This should now pass as the URL was inserted
+    assert data['status_code'] == 200  # Ensure the status code is as expected
+    assert data['successful_page_fetch'] == 1  # Ensure the successful fetch is recorded

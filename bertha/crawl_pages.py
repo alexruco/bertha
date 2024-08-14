@@ -5,18 +5,17 @@ import sys
 import sqlite3
 from datetime import datetime
 from hellen import internal_links_on_page
-from utils import check_http_status, get_robots
-from database_setup import initialize_database
 from dourado import pages_from_sitemaps
-from hellen import internal_links_on_page
+from bertha.utils import check_http_status
+from bertha.database_setup import initialize_database
 
-from database_operations import (
+
+from bertha.database_operations import (
     insert_if_not_exists,
     update_referring_pages,
     update_crawl_info,
     update_sitemaps_for_url,
     get_urls_to_crawl,
-    update_indexibility
 )
 
 def crawl_pages(urls, db_name='db_websites.db', retries=5):

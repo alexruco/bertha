@@ -24,16 +24,16 @@ utils
 __version__ = "0.2.0"
 
 # Import key functions at the package level for easier access
-from .database_setup import initialize_database
-from .database_operations import (
+from bertha.database_setup import initialize_database
+from bertha.database_operations import (
     insert_if_not_exists,
     update_sitemaps_for_url,
     update_crawl_info,
     get_urls_to_crawl
 )
-from .crawl_pages import crawl_pages
-from .utils import check_http_status
-from .database_operations import get_urls_to_crawl
+from bertha.crawl_pages import crawl_pages
+from bertha.utils import check_http_status
+from bertha.database_operations import get_urls_to_crawl
 
 __all__ = [
     "initialize_database",

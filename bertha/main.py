@@ -1,13 +1,13 @@
 # main.py
 
 import sys
-from crawl_pages import crawl_pages, crawl_all_pages, process_sitemaps
-from database_operations import (
+from bertha.crawl_pages import crawl_pages, crawl_all_pages, process_sitemaps
+from bertha.database_operations import (
     insert_main_url,
     initialize_database_with_retries,
     update_all_urls_indexibility,
-    get_all_data_for_website,
-    get_data_for_url
+    fetch_all_website_data,
+    fetch_url_data
 )
 
 def main(base_url, gap, retries=5, timeout=30):
@@ -40,7 +40,7 @@ def main(base_url, gap, retries=5, timeout=30):
     print("Indexibility update complete.")
     
     # Step 6: Return all data for the website
-    return get_all_data_for_website(base_url)
+    return fetch_all_website_data(base_url)
 
 
 def crawl_website(base_url, gap=30):
@@ -71,7 +71,7 @@ def recrawl_url(url, db_name='db_websites.db'):
     :return: The data of the specific URL after recrawling.
     """
     crawl_pages([url], db_name)
-    return get_data_for_url(url)
+    return fetch_url_data(url)
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:

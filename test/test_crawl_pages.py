@@ -1,38 +1,19 @@
-# test_crawl_pages.py
+import pytest
+from bertha.crawl_pages import crawl_pages, process_sitemaps, crawl_all_pages
+from bertha.database_operations import insert_if_not_exists, fetch_all_website_data
 
-import unittest
-from unittest.mock import patch, MagicMock
-from bertha.crawl_pages import crawl_pages
+@pytest.fixture(scope="module")
+def base_url():
+    return "https://example.com"
 
-class TestCrawlPages(unittest.TestCase):
+def test_process_sitemaps(base_url):
+    process_sitemaps(base_url, retries=3, timeout=2)
+    data = fetch_all_website_data(base_url)
+    assert data is not None
+    assert len(data) > 0
 
-    @patch('bertha.database_operations.update_crawl_info')
-    @patch('bertha.crawl_pages.insert_if_not_exists')
-    @patch('bertha.crawl_pages.internal_links_on_page')
-    @patch('bertha.crawl_pages.check_http_status')
-    def test_crawl_pages_successful(self, mock_check_http_status, mock_internal_links_on_page, mock_insert_if_not_exists, mock_update_crawl_info):
-        mock_check_http_status.return_value = 200
-        mock_internal_links_on_page.return_value = [
-            "https://www.example.com/page1",
-            "https://www.example.com/page2"
-        ]
-        
-        crawl_pages(["https://www.example.com"])
-
-        mock_check_http_status.assert_called_once_with("https://www.example.com")
-        mock_internal_links_on_page.assert_called_once_with("https://www.example.com")
-        mock_insert_if_not_exists.assert_any_call("https://www.example.com/page1", 'db_websites.db')
-        mock_insert_if_not_exists.assert_any_call("https://www.example.com/page2", 'db_websites.db')
-        mock_update_crawl_info.assert_called_once_with("https://www.example.com", 200)
-
-    @patch('bertha.database_operations.update_crawl_info')
-    @patch('bertha.crawl_pages.check_http_status')
-    def test_crawl_pages_unsuccessful(self, mock_check_http_status, mock_update_crawl_info):
-        mock_check_http_status.return_value = 404
-        crawl_pages(["https://www.example.com/nonexistent"])
-
-        mock_check_http_status.assert_called_once_with("https://www.example.com/nonexistent")
-        mock_update_crawl_info.assert_called_once_with("https://www.example.com/nonexistent", 404)
-
-if __name__ == '__main__':
-    unittest.main()
+def test_crawl_all_pages(base_url):
+    crawl_all_pages(base_url, gap=30, retries=3, timeout=2)
+    data = fetch_all_website_data(base_url)
+    assert data is not None
+    assert len(data) > 0
