@@ -1,5 +1,3 @@
-# bertha/database_operations.py
-
 from sqlite3 import dbapi2 as sqlite3
 from urllib.parse import urlparse
 from sqlalchemy.pool import QueuePool
@@ -17,7 +15,6 @@ def get_conn():
     Get a connection from the pool.
     """
     return pool.connect()
-# bertha/database_operations.py
 
 def update_all_urls_indexibility(base_url, retries=5, timeout=2):
     """
@@ -257,3 +254,77 @@ def insert_main_url(base_url, retries, timeout):
     else:
         print("Failed to insert main URL after multiple attempts.")
         sys.exit(1)
+
+def fetch_all_website_data(base_url, db_name='db_websites.db'):
+    """
+    Fetches all data for a given website (base URL) from the database.
+
+    :param base_url: The base URL of the website.
+    :param db_name: The name of the SQLite database file (default is 'db_websites.db').
+    :return: A list of dictionaries containing all data for each URL.
+    """
+    conn = get_conn()
+    cursor = conn.cursor()
+    try:
+        cursor.execute('''
+            SELECT url, dt_discovered, sitemaps, referring_pages, successful_page_fetch, status_code, dt_last_crawl, robots_index, robots_follow
+            FROM tb_pages
+            WHERE url LIKE ?
+        ''', (f'%{base_url}%',))
+
+        rows = cursor.fetchall()
+        data = [
+            {
+                "url": row[0],
+                "dt_discovered": row[1],
+                "sitemaps": row[2],
+                "referring_pages": row[3],
+                "successful_page_fetch": row[4],
+                "status_code": row[5],
+                "dt_last_crawl": row[6],
+                "robots_index": row[7],
+                "robots_follow": row[8]
+            }
+            for row in rows
+        ]
+    finally:
+        conn.close()
+
+    return data
+
+def fetch_url_data(url, db_name='db_websites.db'):
+    """
+    Fetches all data for a specific URL from the database.
+
+    :param url: The specific URL.
+    :param db_name: The name of the SQLite database file (default is 'db_websites.db').
+    :return: A dictionary containing all data for the URL.
+    """
+    conn = get_conn()
+    cursor = conn.cursor()
+    try:
+        cursor.execute('''
+            SELECT url, dt_discovered, sitemaps, referring_pages, successful_page_fetch, status_code, dt_last_crawl, robots_index, robots_follow
+            FROM tb_pages
+            WHERE url = ?
+        ''', (url,))
+
+        row = cursor.fetchone()
+        if row:
+            data = {
+                "url": row[0],
+                "dt_discovered": row[1],
+                "sitemaps": row[2],
+                "referring_pages": row[3],
+                "successful_page_fetch": row[4],
+                "status_code": row[5],
+                "dt_last_crawl": row[6],
+                "robots_index": row[7],
+                "robots_follow": row[8]
+            }
+        else:
+            data = None
+    finally:
+        conn.close()
+
+    return data
