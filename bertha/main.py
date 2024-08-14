@@ -1,13 +1,15 @@
 # main.py
 
 import sys
+from bertha.utils import check_http_status
 from bertha.crawl_pages import crawl_pages, crawl_all_pages, process_sitemaps
 from bertha.database_operations import (
     insert_main_url,
     initialize_database_with_retries,
     update_all_urls_indexibility,
     fetch_all_website_data,
-    fetch_url_data
+    fetch_url_data,
+    update_crawl_info
 )
 
 def main(base_url, gap, retries=5, timeout=30):
@@ -70,8 +72,18 @@ def recrawl_url(url, db_name='db_websites.db'):
     :param db_name: The name of the SQLite database file (default is 'db_websites.db').
     :return: The data of the specific URL after recrawling.
     """
+    status_code = check_http_status(url)
+    
+    if status_code is None or status_code >= 400:
+        # Handle non-available URL gracefully
+        print(f"URL '{url}' is not available. Status code: {status_code}")
+        update_crawl_info(url, status_code, successful=False, db_name=db_name)
+        return None
+    
+    # Proceed with the regular crawl process
     crawl_pages([url], db_name)
-    return fetch_url_data(url)
+    return fetch_url_data(url, db_name)
+
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:

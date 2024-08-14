@@ -20,8 +20,7 @@ def get_conn(db_name='db_websites.db'):
     """
     return sqlite3.connect(db_name)
 
-
-def update_all_urls_indexibility(base_url, retries=5, timeout=2,db_name='db_websites.db'):
+def update_all_urls_indexibility(base_url, retries=5, timeout=2):
     """
     Updates the indexibility of all URLs in the database for the given base URL.
     
@@ -31,10 +30,10 @@ def update_all_urls_indexibility(base_url, retries=5, timeout=2,db_name='db_webs
     """
     robots_rules = get_robots(base_url)
     if robots_rules is None:
-        print(f"Could not retrieve robots.txt for {base_url}. Proceeding without robots.txt rules.")
+        print(f"No robots.txt rules found for {base_url}. Skipping indexibility updates.")
         return
 
-    conn = get_conn(db_name=db_name)
+    conn = get_conn()
     cursor = conn.cursor()
     try:
         cursor.execute('SELECT url FROM tb_pages WHERE url LIKE ?', (f'%{base_url}%',))
@@ -46,7 +45,7 @@ def update_all_urls_indexibility(base_url, retries=5, timeout=2,db_name='db_webs
         url = url_tuple[0]
         for attempt in range(retries):
             try:
-                update_indexibility(url, robots_rules)
+                update_indexibility(url, robots_rules, db_name='db_websites.db')
                 break
             except Exception as e:
                 print(f"Updating indexibility for {url} failed, retrying {attempt + 1}/{retries}...")
@@ -60,9 +59,13 @@ def update_indexibility(url, robots_rules, db_name='db_websites.db'):
     based on the robots.txt rules.
 
     :param url: The URL to update.
-    :param robots_rules: A dictionary of robots.txt rules.
+    :param robots_rules: A dictionary of robots.txt rules or None if robots.txt is inaccessible.
     :param db_name: The name of the SQLite database file (default is 'db_websites.db').
     """
+    if robots_rules is None:
+        print(f"No robots.txt rules to apply for {url}. Skipping indexibility update.")
+        return
+
     parsed_url = urlparse(url)
     path = parsed_url.path
 
@@ -184,7 +187,6 @@ def get_urls_to_crawl(base_url, gap=30, db_name='db_websites.db'):
 
     return [url[0] for url in urls]
 
-
 def update_referring_pages(url, referring_url, db_name='db_websites.db'):
     """
     Updates the referring_pages field for a given URL in the database by appending a new referring URL.
@@ -287,6 +289,7 @@ def fetch_all_website_data(base_url, db_name='db_websites.db'):
         conn.close()
 
     return data
+
 def fetch_url_data(url, db_name='db_websites.db'):
     """
     Fetches all data for a specific URL from the database.

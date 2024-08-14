@@ -1,41 +1,62 @@
 # bertha/utils.py
 
 import requests
-from urllib.parse import urljoin
+from urllib.parse import urlparse
 
-def get_robots(website):
+def parse_robots(robots_content):
     """
-    Fetches and parses the robots.txt file for the given website.
-    
-    :param website: The base URL of the website (e.g., "https://example.com")
-    :return: A dictionary of rules, where keys are paths and values are dictionaries with "index" and "follow" flags.
+    Parses the content of a robots.txt file and returns a dictionary of rules.
+
+    :param robots_content: The content of the robots.txt file as a string.
+    :return: A dictionary where the keys are path prefixes and the values are dictionaries
+             containing "index" and "follow" boolean flags.
     """
-    robots_url = urljoin(website, "/robots.txt")
+    rules = {}
+    current_user_agent = None
+    lines = robots_content.splitlines()
+
+    for line in lines:
+        line = line.strip()
+        if not line or line.startswith('#'):  # Skip empty lines and comments
+            continue
+
+        if line.lower().startswith('user-agent:'):
+            current_user_agent = line.split(':', 1)[1].strip()
+        elif line.lower().startswith('disallow:') and current_user_agent == '*':
+            path = line.split(':', 1)[1].strip()
+            if path:  # If there's a specific path
+                rules[path] = {"index": False, "follow": True}
+        elif line.lower().startswith('allow:') and current_user_agent == '*':
+            path = line.split(':', 1)[1].strip()
+            if path:
+                rules[path] = {"index": True, "follow": True}
+        elif line.lower().startswith('crawl-delay:'):
+            # Handle crawl-delay if needed
+            pass
+
+    return rules
+
+
+def get_robots(base_url):
+    """
+    Fetches and parses the robots.txt file for a given base URL.
+
+    :param base_url: The base URL of the website.
+    :return: A dictionary of parsed robots.txt rules or None if the robots.txt file is not found.
+    """
+    parsed_url = urlparse(base_url)
+    robots_url = f"{parsed_url.scheme}://{parsed_url.netloc}/robots.txt"
+
     try:
-        response = requests.get(robots_url, timeout=10)
+        response = requests.get(robots_url)
         response.raise_for_status()
 
-        robots_rules = {}
-        for line in response.text.splitlines():
-            line = line.strip()
-            if line.lower().startswith("user-agent:"):
-                # We only care about the global rules for all user agents
-                user_agent = line.split(":")[1].strip().lower()
-                if user_agent != "*":
-                    continue
-            elif line.lower().startswith("disallow:"):
-                path = line.split(":")[1].strip()
-                robots_rules[path] = {"index": False, "follow": False}
-            elif line.lower().startswith("allow:"):
-                path = line.split(":")[1].strip()
-                robots_rules[path] = {"index": True, "follow": True}
+        robots_content = response.text
+        return parse_robots(robots_content)
 
-        return robots_rules
-
-    except requests.RequestException as e:
-        print(f"Failed to fetch robots.txt for {website}: {e}")
+    except requests.exceptions.RequestException as e:
+        print(f"Failed to fetch robots.txt for {base_url}: {e}")
         return None
-
 
 def check_http_status(url):
     """
