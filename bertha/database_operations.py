@@ -7,7 +7,6 @@ from datetime import datetime, timedelta
 from bertha.database_setup import initialize_database
 from bertha.utils import get_robots, is_actual_page
 
-
 # Create a connection pool
 pool = QueuePool(lambda: sqlite3.connect('db_websites.db'), max_overflow=10, pool_size=5)
 
@@ -176,8 +175,17 @@ def update_crawl_info(url, status_code, successful, db_name='db_websites.db'):
         conn.commit()
         print(f"Updated crawl info for '{url}' with status {status_code}, dt_last_crawl {dt_last_crawl}, and successful_page_fetch {successful}.")
 
+
+
 def get_urls_to_crawl(base_url, gap=30, db_name='db_websites.db'):
-    cutoff_date = (datetime.now() - timedelta(days=gap)).strftime('%Y%m%d%H%M%S')
+    # Calculate cutoff date
+    if gap == 0:
+        # Set cutoff to the start of today
+        cutoff_date = datetime.now().strftime('%Y%m%d000000')
+    else:
+        # Set cutoff to the exact time X days ago
+        cutoff_date = (datetime.now() - timedelta(days=gap)).strftime('%Y%m%d%H%M%S')
+
     conn = sqlite3.connect(db_name)
     cursor = conn.cursor()
     try:
@@ -190,7 +198,7 @@ def get_urls_to_crawl(base_url, gap=30, db_name='db_websites.db'):
 
         urls = cursor.fetchall()
     finally:
-        conn.close()  # Return the connection to the pool
+        conn.close()  # Close the connection
 
     return [url[0] for url in urls]
 
