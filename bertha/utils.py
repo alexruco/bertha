@@ -77,6 +77,27 @@ def check_http_status(url):
         print(f"Error checking status for {url}: {e}")
         return None
 
+def get_content_type(url):
+    """
+    Performs a HEAD request to retrieve the Content-Type of the given URL.
+    
+    Args:
+    url (str): The URL for which to retrieve the Content-Type.
+    
+    Returns:
+    str: The Content-Type of the URL, or None if the request fails.
+    """
+    try:
+        response = requests.head(url, allow_redirects=True)
+        if response.status_code == 200:
+            return response.headers.get('Content-Type')
+        else:
+            print(f"Failed to retrieve Content-Type for {url}: Status code {response.status_code}")
+            return None
+    except requests.RequestException as e:
+        print(f"Error occurred while fetching Content-Type for {url}: {e}")
+        return None
+
 # Example usage
 if __name__ == "__main__":
     url = "https://www.example.com"
