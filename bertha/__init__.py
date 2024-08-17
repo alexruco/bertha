@@ -34,6 +34,12 @@ from bertha.database_operations import (
 from bertha.crawl_pages import crawl_pages
 from bertha.utils import check_http_status
 from bertha.database_operations import get_urls_to_crawl
+from bertha.main import (
+    crawl_website,
+    recrawl_website,
+    recrawl_url
+)
+
 
 __all__ = [
     "initialize_database",
@@ -42,5 +48,8 @@ __all__ = [
     "update_crawl_info",
     "get_urls_to_crawl",
     "crawl_pages",
-    "check_http_status"
+    "check_http_status",
+    "crawl_website",
+    "recrawl_website",
+    "recrawl_url"
 ]
