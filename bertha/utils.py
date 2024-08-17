@@ -36,6 +36,27 @@ def parse_robots(robots_content):
 
     return rules
 
+def is_actual_page(url):
+    """
+    Determines if a URL is likely to be an actual page, not a file.
+    Checks both the file extension and the content type.
+    """
+    # List of non-page file extensions to exclude
+    NON_PAGE_EXTENSIONS = [
+    '.xml', '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.svg', 
+    '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', 
+    '.zip', '.rar', '.exe', '.dmg', '.tar', '.gz'
+    ]
+    # Check if the URL ends with a known non-page extension
+    if any(url.lower().endswith(ext) for ext in NON_PAGE_EXTENSIONS):
+        return False
+
+    # Optionally, check the content type by making a HEAD request
+    content_type = get_content_type(url)
+    if content_type and 'text/html' in content_type.lower():
+        return True
+    
+    return False
 
 def get_robots(base_url):
     """

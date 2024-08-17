@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 from sqlalchemy.pool import QueuePool
 from datetime import datetime, timedelta
 from bertha.database_setup import initialize_database
-from bertha.utils import get_robots
+from bertha.utils import get_robots, is_actual_page
 
 
 # Create a connection pool
@@ -100,7 +100,14 @@ def update_indexibility(url, robots_rules, db_name='db_websites.db'):
             else:
                 raise
 
+from bertha.utils import is_actual_page  # Assuming is_actual_page is in utils
+
 def insert_if_not_exists(url, referring_page=None, db_name='db_websites.db', retries=5):
+    # Check if the URL is an actual page before proceeding
+    if not is_actual_page(url):
+        print(f"insert_if_not_exists: Skipping non-page URL: {url}")
+        return
+
     for i in range(retries):
         try:
             with get_conn(db_name) as conn:
@@ -124,7 +131,7 @@ def insert_if_not_exists(url, referring_page=None, db_name='db_websites.db', ret
                 time.sleep(2)  # wait before retrying, increase the sleep time if necessary
             else:
                 raise
-                   
+              
 def update_sitemaps_for_url(url, sitemap_url,  db_name='db_websites.db'):
     conn = get_conn(db_name=db_name)
     cursor = conn.cursor()
