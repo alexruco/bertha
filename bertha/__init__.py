@@ -21,7 +21,7 @@ utils
     Provides utility functions, including checking the HTTP status of URLs.
 """
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 
 # Import key functions at the package level for easier access
 from bertha.database_setup import initialize_database

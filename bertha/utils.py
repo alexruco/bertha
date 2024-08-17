@@ -121,12 +121,11 @@ def get_content_type(url):
 
 def normalize_url(url):
     """
-    Normalize the URL by removing the trailing slash for consistency.
+    Normalize the URL by ensuring it ends with a trailing slash for consistency.
     """
-    if url.endswith('/'):
-        return url[:-1]
+    if not url.endswith('/'):
+        return url + '/'
     return url
-
 # Example usage
 if __name__ == "__main__":
     url = "https://www.example.com"
