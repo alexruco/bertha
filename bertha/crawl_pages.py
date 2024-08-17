@@ -6,8 +6,9 @@ import sqlite3
 from datetime import datetime
 from hellen import internal_links_on_page
 from dourado import pages_from_sitemaps
-from bertha.utils import check_http_status, get_content_type
+from bertha.utils import check_http_status
 from bertha.database_setup import initialize_database
+
 
 from bertha.database_operations import (
     insert_if_not_exists,
@@ -16,29 +17,6 @@ from bertha.database_operations import (
     update_sitemaps_for_url,
     get_urls_to_crawl,
 )
-
-# List of non-page file extensions to exclude
-NON_PAGE_EXTENSIONS = [
-    '.xml', '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.svg', 
-    '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', 
-    '.zip', '.rar', '.exe', '.dmg', '.tar', '.gz'
-]
-
-def is_actual_page(url):
-    """
-    Determines if a URL is likely to be an actual page, not a file.
-    Checks both the file extension and the content type.
-    """
-    # Check if the URL ends with a known non-page extension
-    if any(url.lower().endswith(ext) for ext in NON_PAGE_EXTENSIONS):
-        return False
-
-    # Optionally, check the content type by making a HEAD request
-    content_type = get_content_type(url)
-    if content_type and 'text/html' in content_type.lower():
-        return True
-    
-    return False
 
 def crawl_pages(urls, db_name='db_websites.db', retries=5):
     """
@@ -52,11 +30,6 @@ def crawl_pages(urls, db_name='db_websites.db', retries=5):
     initialize_database(db_name)
 
     for url in urls:
-        # Filter out non-page URLs
-        if not is_actual_page(url):
-            print(f"Skipping non-page URL: {url}")
-            continue
-
         # Attempt to crawl each URL, with retries in case of database locks
         for attempt in range(retries):
             try:
