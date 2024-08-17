@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 from sqlalchemy.pool import QueuePool
 from datetime import datetime, timedelta
 from bertha.database_setup import initialize_database
-from bertha.utils import get_robots, is_actual_page
+from bertha.utils import get_robots, is_actual_page, normalize_url
 
 # Create a connection pool
 pool = QueuePool(lambda: sqlite3.connect('db_websites.db'), max_overflow=10, pool_size=5)
@@ -99,19 +99,21 @@ def update_indexibility(url, robots_rules, db_name='db_websites.db'):
             else:
                 raise
 
-from bertha.utils import is_actual_page  # Assuming is_actual_page is in utils
-
 def insert_if_not_exists(url, referring_page=None, db_name='db_websites.db', retries=5):
+    # Normalize the URL to ensure consistency
+    normalized_url = normalize_url(url)
+
     # Check if the URL is an actual page before proceeding
-    if not is_actual_page(url):
-        print(f"insert_if_not_exists: Skipping non-page URL: {url}")
+    if not is_actual_page(normalized_url):
+        print(f"insert_if_not_exists: Skipping non-page URL: {normalized_url}")
         return
 
     for i in range(retries):
         try:
             with get_conn(db_name) as conn:
                 cursor = conn.cursor()
-                cursor.execute('SELECT COUNT(*) FROM tb_pages WHERE url = ?', (url,))
+                # Perform the check using the normalized URL
+                cursor.execute('SELECT COUNT(*) FROM tb_pages WHERE url = ? OR url = ?', (normalized_url, normalized_url + '/'))
                 count = cursor.fetchone()[0]
 
                 if count == 0:
@@ -119,10 +121,10 @@ def insert_if_not_exists(url, referring_page=None, db_name='db_websites.db', ret
                     cursor.execute('''
                         INSERT INTO tb_pages (url, dt_discovered, sitemaps, referring_pages, successful_page_fetch, status_code)
                         VALUES (?, ?, ?, ?, ?, ?)
-                    ''', (url, dt_discovered, None, referring_page, False, 0))
-                    print(f"Inserted '{url}' into 'tb_pages' with discovery timestamp '{dt_discovered}'.")
+                    ''', (normalized_url, dt_discovered, None, referring_page, False, 0))
+                    print(f"Inserted '{normalized_url}' into 'tb_pages' with discovery timestamp '{dt_discovered}'.")
                 else:
-                    print(f"'{url}' already exists in 'tb_pages'.")
+                    print(f"'{normalized_url}' or '{normalized_url}/' already exists in 'tb_pages'.")
             break
         except sqlite3.OperationalError as e:
             if 'locked' in str(e):
@@ -130,7 +132,7 @@ def insert_if_not_exists(url, referring_page=None, db_name='db_websites.db', ret
                 time.sleep(2)  # wait before retrying, increase the sleep time if necessary
             else:
                 raise
-              
+          
 def update_sitemaps_for_url(url, sitemap_url,  db_name='db_websites.db'):
     conn = get_conn(db_name=db_name)
     cursor = conn.cursor()

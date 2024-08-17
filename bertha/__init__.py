@@ -52,5 +52,6 @@ __all__ = [
     "crawl_website",
     "recrawl_website",
     "recrawl_url",
-    "get_content_type"
+    "get_content_type",
+    "normalize_url"
 ]

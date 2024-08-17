@@ -119,6 +119,14 @@ def get_content_type(url):
         print(f"Error occurred while fetching Content-Type for {url}: {e}")
         return None
 
+def normalize_url(url):
+    """
+    Normalize the URL by removing the trailing slash for consistency.
+    """
+    if url.endswith('/'):
+        return url[:-1]
+    return url
+
 # Example usage
 if __name__ == "__main__":
     url = "https://www.example.com"
