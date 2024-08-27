@@ -1,5 +1,5 @@
 # main.py
-
+import sqlite3
 import sys
 from bertha.utils import check_http_status
 from bertha.crawl_pages import crawl_pages, crawl_all_pages, process_sitemaps
@@ -44,7 +44,6 @@ def main(base_url, gap, retries=5, timeout=30):
     # Step 6: Return all data for the website
     return fetch_all_website_data(base_url)
 
-
 def crawl_website(base_url, gap=30):
     """
     Initiates a crawl of the website starting from the base_url, using the provided gap.
@@ -84,6 +83,29 @@ def recrawl_url(url, db_name='db_websites.db'):
     crawl_pages([url], db_name)
     return fetch_url_data(url, db_name)
 
+def indexible_pages(url_start, db_path="db_websites.db"):
+    # Connect to the SQLite database
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    
+    # Query to select the URLs that match the criteria
+    query = """
+    SELECT url
+    FROM tb_pages
+    WHERE url LIKE ? AND successful_page_fetch = 1 AND robots_index = 1
+    """
+    
+    # Execute the query with the provided URL start string
+    cursor.execute(query, (f'{url_start}%',))
+    
+    # Fetch all matching rows
+    urls = cursor.fetchall()
+    
+    # Close the connection
+    conn.close()
+    
+    # Return the list of URLs
+    return [url[0] for url in urls]
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:

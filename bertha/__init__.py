@@ -37,7 +37,8 @@ from bertha.database_operations import get_urls_to_crawl
 from bertha.main import (
     crawl_website,
     recrawl_website,
-    recrawl_url
+    recrawl_url,
+    indexible_pages
 )
 
 
@@ -53,5 +54,6 @@ __all__ = [
     "recrawl_website",
     "recrawl_url",
     "get_content_type",
-    "normalize_url"
+    "normalize_url",
+    "indexible_pages"
 ]
