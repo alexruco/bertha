@@ -1,1 +1,5 @@
 requests
+sqlalchemy
+-e git+https://github.com/alexruco/bertha/virginia#egg=virginia
+-e git+https://github.com/alexruco/hellen#egg=hellen
+-e git+https://github.com/alexruco/dourado#egg=dourado
